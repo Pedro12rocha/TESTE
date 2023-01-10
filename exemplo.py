@@ -18,6 +18,7 @@ pf = 1
 
 dss_file = r"C:\PauloRadatz\GitHub\NEPSE_Python_OpenDSS\ckt5\Master_ckt5.dss"
 
+
 dss = py_dss_interface.DSSDLL()
 
 dss.text(f"Compile [{dss_file}]")
