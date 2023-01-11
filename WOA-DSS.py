@@ -71,10 +71,6 @@ def woa(fitness, max_iter, n, dim, minx, maxx):
 		dss_file = r"C:\Users\pedro\Documents\OpenDSS\TCC\WOA\123Bus_No_Print\IEEE123Master.dss"
 		dss.text("compile {}".format(dss_file))
 
-		v_pu_nodes = dss.circuit_all_node_vmag_pu_by_phase()
-		max_value_v_pu = numpy.max(v_pu_nodes)
-		min_value_v_pu = numpy.min(v_pu_nodes)
-
 		# after every 10 iterations
 		# print iteration number and best fitness value so far
 		if Iter % 10 == 0 and Iter > 1:
@@ -134,12 +130,6 @@ def woa(fitness, max_iter, n, dim, minx, maxx):
 
 		Iter += 1
 	# end-while
-	print(dss.circuit_num_buses())
-	print(dss.circuit_num_nodes())
-	print(dss.circuit_line_losses())
-	print(dss.circuit_losses())
-	print(dss.circuit_all_bus_names())
-
 	# returning the best solution
 	return Xbest
 
