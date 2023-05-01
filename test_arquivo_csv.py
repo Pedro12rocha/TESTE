@@ -1,194 +1,225 @@
-# particleswarm.py
-# python 3.4.3
-# demo of particle swarm optimization (PSO)
-# solves Rastrigin's function
+# python implementation of whale optimization algorithm (WOA)
+# minimizing rastrigin and sphere function
 
-import numpy
-import py_dss_interface
 import random
-import math  # cos() for Rastrigin
-import copy  # array-copying convenience
-import sys  # max float
+import numpy
+import math # cos() for Rastrigin
+import copy # array-copying convenience
+import sys # max float
+import py_dss_interface
+import functions
+import cmath
+from scipy.stats import weibull_min
+
+# -------------------------
+# whale class
+class whale:
+	def __init__(self, dim, minx, maxx, seed):
+		self.rnd = random.Random(seed)
+		self.position = [0.0 for i in range(dim)]
+		self.fitness = [0.0 for i in range(dim)]
+
+		for i in range(dim):
+			self.position[i] = ((maxx - minx) * self.rnd.random() + minx)
+			self.fitness[i] = ((maxx - minx) * self.rnd.random() + minx)
+
+# whale optimization algorithm(WOA)
+def woa(max_iter, n, dim, minx, maxx):
+	rnd = random.Random(0)
+
+	# create n random whales
+	whalePopulation = [whale(dim, minx, maxx, i) for i in range(n)]
+
+	# compute the value of best_position and best_fitness in the whale Population
+	Xbest = sys.float_info.max
+	Fbest = sys.float_info.max
+
+	for i in range(n): # check each whale
+		for j in range(dim):
+			if whalePopulation[i].fitness[j] < Fbest:
+				Fbest = whalePopulation[i].fitness[j]
+				Xbest = copy.copy(whalePopulation[i].position[j])
+	# main loop of woa
+	Iter = 0
+	while Iter < max_iter:
+#-------open_dss_file()-------------------------------------------------------------------------------------------------
+		dss = py_dss_interface.DSSDLL()
+		dss_file = r"C:\Users\pedro\Documents\OpenDSS\TCC\WOA\123Bus_No_Print\IEEE123Master.dss"
+		dss.text("compile {}".format(dss_file))
+#-----------------------------------------------------------------------------------------------------------------------
+# Função para modificação do valor da carga	----------------------------------------------------------------------------
+
+		a1 = 5731; a2 = 1243; a3 = 774.1; a4 = 736.4; a5 = 460; a6 = 50.09; a7 = 87.16; a8 = 126.6
+		b1 = 0.1089; b2 = 0.2; b3 = 0.5319; b4 = 0.7366; b5 = 1.089; b6 = 1.534; b7 = 2.302; b8 = 2.003
+		c1 = 0.3621; c2 = 3.502; c3 = 1.502; c4 = 1.939; c5 = -2.564; c6 = -1.348; c7 = -5.034; c8 = -1.25
+		t = 19
+		Fload = a1 * math.sin(b1 * t + c1) + a2 * math.sin(b2 * t + c2) + a3 * math.sin(b3 * t + c3) + a4 * math.sin(
+				b4 * t + c4) + a5 * math.sin(b5 * t + c5) + a6 * math.sin(b6 * t + c6) + a7 * math.sin(
+				b7 * t + c7) + a8 * math.sin(b8 * t + c8)
+		dss.loads_first()
+		for i in range(dss.loads_count()):
+			dss.loads_write_kw(dss.loads_read_kw()*Fload)
+			dss.loads_write_kvar(dss.loads_read_kvar()*Fload)
+			dss.loads_next()
+#-----------------------------------------------------------------------------------------------------------------------
+# Função para modificação por mei de Weibul	----------------------------------------------------------------------------
 
 
-# ------------------------------------
-#        PROGRAMA VERSÃO TEST
-#       FALTA A IMPLEMENTAÇÃO DA POLITICA DE INCENTIVO
-# ------------------------------------
+# Função definir qual combinação de cargas	----------------------------------------------------------------------------
 
-class Particle:
-    def __init__(self, dim, minx, maxx, seed):
-        self.rnd = random.Random(seed)
-        self.position = [0.0 for i in range(dim)]
-        self.velocity = [0.0 for i in range(dim)]
-        self.best_part_pos = [0.0 for i in range(dim)]
+#-----------------------------------------------------------------------------------------------------------------------
+		# after every 10 iterations
+		# print iteration number and best fitness value so far
+		if Iter % 10 == 0 and Iter > 1:
+			print("Iter = " + str(Iter) + " best fitness = %.3f" % Fbest)
 
-        self.error = dim  # curr error
-        self.best_part_pos = copy.copy(self.position)
-        self.best_part_err = self.error  # best error
-        self.best_part_tensao = [0.0 for i in range(dim)]
+		# linearly decreased from 2 to 0
+		a = 2 * (1 - Iter / max_iter)
+		a2=-1+Iter*((-1)/max_iter)
 
+		for i in range(n):
+			A = 2 * a * rnd.random() - a
+			C = 2 * rnd.random()
+			b = 1
+			l = (a2-1)*rnd.random()+1;
+			p = rnd.random()
 
-def Solve(max_epochs, n, dim, minx, maxx, ger):
-    rnd = random.Random(0)
+			D = [0.0 for i in range(dim)]
+			D1 = [0.0 for i in range(dim)]
+			Xnew = [0.0 for i in range(dim)]
+			Xrand = [0.0 for i in range(dim)]
+			if p < 0.5:
+				if abs(A) > 1:
+					for j in range(dim):
+						D[j] = abs(C * Xbest - whalePopulation[i].position[j])
+						Xnew[j] = Xbest - A * D[j]
+				else:
+					p = random.randint(0, n - 1)
+					while (p == i):
+						p = random.randint(0, n - 1)
 
-    # create n random particles
-    swarm = [Particle(dim, minx, maxx, i) for i in range(n)]
+					Xrand = whalePopulation[p].position
 
-    for i in range(n):
-        for k in range(ger):
-            swarm[i].position[k] = random.randint(0, dim)
-            swarm[i].velocity[k] = round(random.uniform(minx, maxx), 2)
+					for j in range(dim):
+						D[j] = abs(C * Xrand[j] - whalePopulation[i].position[j])
+						Xnew[j] = Xrand[j] - A * D[j]
+			else:
+				for j in range(dim):
+					D1[j] = abs(Xbest - whalePopulation[i].position[j])
+					Xnew[j] = D1[j] * math.exp(b * l) * math.cos(2 * math.pi * l) + Xbest
 
-    best_swarm_pos = [0.0 for i in range(dim)]  # not necess.
-    best_swarm_err = dim * 2  # swarm best
+			for j in range(dim):
+				whalePopulation[i].position[j] = abs(int(Xnew[j]))
 
-    for i in range(n):  # check each particle
-        if swarm[i].error < best_swarm_err:
-            best_swarm_err = swarm[i].error
-            best_swarm_pos = copy.copy(swarm[i].position)
+		for i in range(n):
+			# if Xnew < minx OR Xnew > maxx
+			# then clip it
+			for j in range(dim):
+				whalePopulation[i].position[j] = abs(int(max(whalePopulation[i].position[j], minx)))
+				whalePopulation[i].position[j] = abs(int(min(whalePopulation[i].position[j], maxx)))
 
-    epoch = 0
-    w = 0.729  # inertia
-    c1 = 1.49445  # cognitive (particle)
-    c2 = 1.49445  # social (swarm)
+# Função para implementar a unidade de GD ------------------------------------------------------------------------------
+				buses = dss.circuit_all_bus_names()
+				mv_bus_voltage_dict = dict()
+				if whalePopulation[i].position[j] in buses:
+					p_step = 10
+					v_threshold = 1.05
+					kva_to_kw = 1
+					pf = 1
+					dss.circuit_set_active_bus(whalePopulation[i].position[j])
+					if whalePopulation[i].position[j] == "sourcebus":
+						pass
+					elif dss.bus_kVbase() >= 1.0 and len(dss.bus_nodes()) == 3:
+						mv_bus_voltage_dict[whalePopulation[i].position[j]] = dss.bus_kVbase()
+						functions.define_3ph_pvsystem(dss, whalePopulation[i].position[j], mv_bus_voltage_dict[whalePopulation[i].position[j]], p_step * kva_to_kw, p_step)
+						functions.add_bus_marker(dss, whalePopulation[i].position[j], "blue", 2)
 
-    while epoch < max_epochs:
+					dss.text("Solve")
+# ----------------------------------------------------------------------------------------------------------------------
+# Função restrição de tensão -------------------------------------------------------------------------------------------
+				v_pu_nodes = []
+				v_pu_nodes.append(dss.circuit_all_bus_vmag_pu())
+				max_value_v_pu = numpy.max(v_pu_nodes)
+				min_value_v_pu = numpy.min(v_pu_nodes)
 
-        for i in range(n):  # process each particle
+				if max_value_v_pu > 1.05:
+					V_rest = 0
+				elif min_value_v_pu < 0.95:
+					V_rest = 0
+				else:
+					V_rest = 1
+#-----------------------------------------------------------------------------------------------------------------------
+# Função restrição de fluxo de potencia --------------------------------------------------------------------------------
+#				dss.lines_first()
+#				for _ in range(dss.lines_count()):
+#					if dss.lines_read_phases() == 3:
+#						dss.circuit_set_active_element(dss.lines_read_name())
+#						current = dss.cktelement_currents_mag_ang()
+#						rating_current = dss.cktelement_read_norm_amps()
+#						if max(current[0:12:2]) / rating_current > 1:
+#							thermal_violation = 1
+#						else:
+#							thermal_violation = 0
+#					dss.lines_next()
+#-----------------------------------------------------------------------------------------------------------------------
+# Função objetivo potencia Redução potencia ativa e reativa
+#-----------------------------------------------------------------------------------------------------------------------
+# Função Objetiva VSI---------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------
+# Função objetivos de variação de tensão--------------------------------------------------------------------------------
+				vdeviation_1 = ((1 - abs(max_value_v_pu)) / abs(max_value_v_pu))
+				vdeviation_2 = ((1 - abs(min_value_v_pu)) / abs(min_value_v_pu))
 
-            # |Acessa o opendss
-            dss = py_dss_interface.DSSDLL()
-            dss_file = r"C:\Users\pedro\Documents\OpenDSS\TCC\teste_fusao_2_exemplos.dss"
-            dss.text("compile {}".format(dss_file))
+				if (vdeviation_2 > vdeviation_1):
+					fitness_value = vdeviation_2
+				else:
+					fitness_value = vdeviation_1
+# ----------------------------------------------------------------------------------------------------------------------
+				whalePopulation[i].fitness[j] = fitness_value
+				if (whalePopulation[i].fitness[j] < Fbest):
+#					if Rest_pot==0:
+						if V_rest==0:
+							Xbest = whalePopulation[i].position[j]
+							Fbest = whalePopulation[i].fitness[j]
 
-            # compute new velocity of curr particle
-            for k in range(dim):
-                r1 = rnd.random()  # randomizations
-                r2 = rnd.random()
+		Iter += 1
+	dss.text("New EnergyMeter.Feeder Line.L115 1")
+	dss.text("solve")
+	dss.text("Buscoords Buscoords.dat")
+	dss.text("Plot Profile")
+	dss.text("plot profile phases=all")
+	dss.text("Redirect CircuitplottingScripts.DSS")
+	dss.text("plot Loadshape Object=default")
 
-                swarm[i].velocity[k] = ((w * swarm[i].velocity[k]) + (c1 * r1 * (swarm[i].best_part_pos[k] - swarm[i].position[k])) + (c2 * r2 * (best_swarm_pos[k] - swarm[i].position[k])))
+	print("\nWOA completed\n")
+	print("\nBest solution found:")
+	print(Xbest)
+	print("\nBest Err found:")
+	print(Fbest)
+	# end-while
+	# returning the best solution
+	load_buses = list()
+	loads = dss.loads_all_names()
+	for load in loads:
+		dss.circuit_set_active_element(load)
+		load_buses = load_buses + dss.cktelement_read_bus_names()
+	for bus in load_buses:
+		functions.add_bus_marker(dss, bus, "red", 5)
+	dss.text("Interpolate")
+	dss.solution_solve()
+	dss.text("Plot circuit")
+	return Xbest
 
-                if swarm[i].velocity[k] < minx:
-                    swarm[i].velocity[k] = minx
-                elif swarm[i].velocity[k] > maxx:
-                    swarm[i].velocity[k] = maxx
+# Interface com usuário ------------------------------------------------------------------------------------------------
+# Resultado para a função objetivo de melhor indice de estabilidade de Tensão
 
-            # compute new position using new velocity
-            for k in range(dim):
-                swarm[i].position[k] += swarm[i].velocity[k]
-                swarm[i].position[k] = int(swarm[i].position[k])
+print("\nBegin whale optimization algorithm on rastrigin function\n")
+dim = 1
+num_whales = 5
+max_iter = 100
 
-                if swarm[i].position[k] < 1:
-                    swarm[i].position[k] = 1
-                elif swarm[i].position[k] > dim:
-                    swarm[i].position[k] = dim
+print("Setting num_whales = " + str(num_whales))
+print("Setting max_iter = " + str(max_iter))
+print("\nStarting WOA algorithm\n")
 
-            for j in range(ger):
-                no = swarm[i].position[j]
-                no = str(no)
-                gerador = str(j+1)
-
-                # Implementando geradores no sistema
-                my_string = "new generator.gen bus1=node  Kw=2342 Kvar= 0.00 model=7"
-                index = my_string.find(" bus")
-                my_string = my_string[:index] + gerador + my_string[index:]
-                index = my_string.find("  Kw")
-                final_string = my_string[:index] + no + my_string[index:]
-
-                dss.text(final_string)
-
-            dss.text("set controlmode=STATIC")
-            dss.text("set mode=snapshot")
-            dss.text("set voltagebases= 12.66")
-            dss.text("calcvoltagebases")
-            dss.text("solve")
-
-            v_pu_nodes = dss.circuit_all_node_vmag_pu_by_phase()
-
-            erro_v_pu = [1] * dim
-            erro_v_pu = numpy.subtract(erro_v_pu, v_pu_nodes)
-            desvio_padrao_v_pu = numpy.multiply(erro_v_pu,erro_v_pu)
-            desvio_padrao_v_pu= sum(desvio_padrao_v_pu)
-            desvio_padrao_v_pu = desvio_padrao_v_pu/dim
-
-            # compute error of new position
-
-            swarm[i].error = desvio_padrao_v_pu
-
-            # Restrição de maximo e minimo de tensão nos nos
-
-            max_value_v_pu = numpy.max(v_pu_nodes)
-            min_value_v_pu = numpy.min(v_pu_nodes)
-
-            if (max_value_v_pu < 1.05) and (min_value_v_pu > 0.95):
-
-                # define melhor grupo de particulas geral
-                 if swarm[i].error < best_swarm_err:
-                    best_swarm_err = swarm[i].error
-                    best_part_err = numpy.min(best_swarm_err)
-                    best_swarm_pos = copy.copy(swarm[i].position)
-                    best_part_pos = numpy.min(best_swarm_pos )
-                    print(best_swarm_pos)
-                    print(best_part_pos)
-
-        # for-each particle
-        epoch += 1
-    # while
-    del best_swarm_pos[ger:dim]
-    print("\n A(s) melhor(es) posição(es) nodal(is) é(sao): ")
-    print(best_swarm_pos)
-    print("\n O menor desvio padrão é: ")
-    print(best_part_err)
-    print("\n A(s) tensão(es) nodal(is) da melhor particula em pu. respectivamente: ")
-
-    # |Acessa o opendss
-    dss = py_dss_interface.DSSDLL()
-    dss_file = r"C:\Users\pedro\Documents\OpenDSS\TCC\teste_fusao_2_exemplos.dss"
-    dss.text("compile {}".format(dss_file))
-
-    for j in range(ger):
-        no = best_part_pos[j]
-        no = str(no)
-        gerador = str(j + 1)
-
-        # Implementando geradores no sistema
-        my_string = "new generator.gen bus1=node  Kw=2342 Kvar= 0.00 model=7"
-        index = my_string.find(" bus")
-        my_string = my_string[:index] + gerador + my_string[index:]
-        index = my_string.find("  Kw")
-        final_string = my_string[:index] + no + my_string[index:]
-
-    dss.text(final_string)
-    dss.text("set controlmode=STATIC")
-    dss.text("set mode=snapshot")
-    dss.text("set voltagebases= 12.66")
-    dss.text("calcvoltagebases")
-    dss.text("solve")
-
-    v_pu_nodes = dss.circuit_all_node_vmag_pu_by_phase()
-    print(v_pu_nodes)
-
-    return best_swarm_pos
-
-
-# end Solve
-
-# tamanho da rede de distribuição
-dim = 33
-
-# quantidade de geradores a ser instalado
-ger = 3
-
-# quantidade de grupo de particulas
-num_particles = 5
-
-# maximo de interações
-max_epochs = 10
-
-# limita variações bruscas de posições
-lim1 = -5.0
-lim2 = 5.0
-
-# resolve o problema proposto
-best_position = Solve(max_epochs, num_particles, dim, lim1, lim2, ger)ma separated
+best_position = woa(max_iter, num_whales, dim, 1.0, 500.0)

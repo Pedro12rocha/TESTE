@@ -16,7 +16,7 @@ v_threshold = 1.05
 kva_to_kw = 1
 pf = 1
 
-dss_file = r"C:\PauloRadatz\GitHub\NEPSE_Python_OpenDSS\ckt5\Master_ckt5.dss"
+dss_file = r"C:\Users\pedro\Documents\OpenDSS\TCC\WOA\123Bus_No_Print\IEEE123Master.dss"
 
 
 dss = py_dss_interface.DSSDLL()
