@@ -41,7 +41,7 @@ dss.text(f"batchedit load..* mode=1")
 dss.text("set loadmult=0.2")
 dss.solution_solve()
 
-
+loads = dss.b
 # b) Maximum and Minimum feeder voltages
 voltages = dss.circuit_all_bus_vmag_pu()
 voltage_min = min(voltages)
@@ -191,3 +191,4 @@ total_pv_q = sum(total_pv_q_list)
 dss.text("plot profile phases=all")
 print("here")
 
+dss.bus_kv_base()

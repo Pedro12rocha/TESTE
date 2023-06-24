@@ -281,3 +281,6 @@ print("Setting max_iter = " + str(max_iter))
 print("\nStarting WOA algorithm\n")
 
 best_position = woa(max_iter, num_whales, dim, 1.0, 500.0)
+
+dss.circuit_all_bus_names
+dss.cir
